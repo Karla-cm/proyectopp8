@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional, Tuple
 from textwrap import dedent
-import streamlit as st
+import streamlit as st # type: ignore
 
 
 # ===============================
@@ -330,5 +330,3 @@ if __name__ == "__main__":
             st.metric("Compatibilidad de Habilidades", f"{compatibilidad}%")
             st.success(f"**Coinciden ({len(coincidentes)}):** {', '.join(coincidentes)}")
             st.warning(f"**Faltan ({len(faltantes)}):** {', '.join(faltantes)}")
-
-
