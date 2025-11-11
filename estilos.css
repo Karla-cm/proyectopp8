@@ -1,0 +1,161 @@
+/* ===== Estilos Generales ===== */
+body {
+    font-family: 'Lato', sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+/* ===== Tarjeta Principal ===== */
+.card {
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* ===== Encabezado ===== */
+.header {
+    background-color: #0056b3;
+    color: #fff;
+    padding: 30px;
+    text-align: center;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 2.5em;
+}
+
+.contacto {
+    margin-top: 10px;
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+.contacto a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.contacto a:hover {
+    text-decoration: underline;
+}
+
+/* ===== Secciones ===== */
+.seccion {
+    padding: 25px 30px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.seccion:last-child {
+    border-bottom: none;
+}
+
+.seccion h2 {
+    color: #0056b3;
+    border-bottom: 2px solid #0056b3;
+    padding-bottom: 5px;
+    margin-top: 0;
+}
+
+/* ===== Habilidades ===== */
+.habilidades-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.habilidades-container span {
+    background-color: #e9f5ff;
+    color: #0056b3;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+/* ===== Experiencia Laboral ===== */
+.experiencia h3 {
+    margin-bottom: 5px;
+}
+
+.experiencia h4 {
+    margin: 0;
+    color: #555;
+    font-weight: normal;
+}
+
+/* ===== Barra Superior ===== */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: linear-gradient(90deg, #0b57a6, #003a78);
+    color: #fff;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.2em;
+}
+
+.nav {
+    display: flex;
+    gap: 10px;
+}
+
+/* ===== Botones ===== */
+.btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background-color: #ff7a18;
+    color: #fff;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ===== Card de Planes ===== */
+.plan-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    text-align: left;
+}
+
+.plan-card h3 {
+    margin: 0 0 6px;
+    color: #003a78;
+}
+
+.plan-card .price {
+    font-size: 1.4em;
+    color: #ff7a18;
+    margin: 6px 0 12px;
+}
