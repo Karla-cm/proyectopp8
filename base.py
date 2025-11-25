@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 # =======================================================
 # 🔗 CONEXIÓN A TU BASE DE DATOS EN RENDER
 # =======================================================
-DATABASE_URL = "postgresql://base_fjwm_user:herHQfSBfoUjEITVn33ePllUToGTsMVm@dpg-d46achshg0os73eesftg-a.oregon-postgres.render.com/base_fjwm"
+DATABASE_URL = "postgresql://base_fjwm_user:herHQfSBfoUjEITVn33ePllUToGTsMVm@dpg-d46achshg0os73eesftg-a/base_fjwm"
 
 # Crear motor de conexión
 engine = create_engine(DATABASE_URL)
@@ -101,10 +101,10 @@ df_habilidades = pd.DataFrame(data_habilidades)
 # =======================================================
 try:
     # Guardar CSV
-    df_egresados.to_csv('egresados_data.csv', index=False, encoding='utf-8')
-    df_ofertas.to_csv('ofertas_data.csv', index=False, encoding='utf-8')
-    df_habilidades.to_csv('habilidades_referencia.csv', index=False, encoding='utf-8')
-    print("✅ Archivos CSV generados correctamente.")
+    # df_egresados.to_csv('egresados_data.csv', index=False, encoding='utf-8')
+    # df_ofertas.to_csv('ofertas_data.csv', index=False, encoding='utf-8')
+    # df_habilidades.to_csv('habilidades_referencia.csv', index=False, encoding='utf-8')
+    # print("✅ Archivos CSV generados correctamente.")
 
     # Subir a PostgreSQL
     df_egresados.to_sql('egresados', engine, if_exists='replace', index=False)
