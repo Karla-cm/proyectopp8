@@ -70,7 +70,7 @@ tqdm==4.67.1
 typing_extensions==4.12.2
 tzdata==2024.2
 uc-micro-py==1.0.3
-urllib3==2.2.3
+u.rllib3==2.2.3
 watchdog==6.0.0
 webencodings==0.5.1
 Werkzeug==3.0.6
@@ -79,4 +79,6 @@ zipp==3.21.0
 fastapi
 pydantic
 uvicorn 
+SQLAlchemy
+psycopg2-binary
 
