@@ -1,158 +1,234 @@
-* =================================== */
-/*          CONFIGURACIÓN GENERAL        */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+
+/* =================================== */
+/*    VARIABLES Y CONFIG GENERAL       */
 /* =================================== */
 
+:root {
+    --primary-color: #000000; /* Azul oscuro profundo */
+    --secondary-color: #000000; /* Turquesa vibrante */
+    --accent-color: #000000; /* Magenta para acentos */
+    --bg-color: #f8f9fa; /* Gris muy claro */
+    --text-color-dark: #000000; /* Casi negro para texto */
+    --text-color-light: #000000; /* Blanco para texto sobre fondos oscuros */
+    --card-bg-color: #ffffff;
+    --border-radius: 12px;
+    --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
 body {
-    background-color: #f0f4f8; /* Un azul muy claro y suave */
+    background-color: var(--bg-color);
     font-family: 'Lato', sans-serif;
-    color: #333;
+    color: var(--text-color-dark);
+    margin: 0;
+    padding: 2rem;
 }
 
-h1, h2, h3, h4, h5, h6 {
-    color: #0d1b2a; /* Azul oscuro para los títulos */
+h1, h2, h3, h4 {
+    color: var(--primary-color);
+    font-weight: 700;
 }
 
-/* Ocultar la decoración de Streamlit */
+/* Ocultar elementos de Streamlit */
 #MainMenu, footer {
     visibility: hidden;
 }
 
-/* Estilo de la barra de navegación lateral */
-.st-emotion-cache-16txtl3 {
-    background-color: #ffffff;
-    border-right: 1px solid #e0e0e0;
-}
-
 /* =================================== */
-/*          PÁGINA DE LOGIN            */
+/*          TARJETA PRINCIPAL (LOGIN)  */
 /* =================================== */
 
-.login-card {
-    background: white;
-    padding: 3rem 4rem;
-    border-radius: 20px;
-    max-width: 600px;
-    margin: 5rem auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+.main-card {
+    background: #ffffff;
+    color: var(--text-color-light);
+    padding: 2.5rem 3rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    max-width: 650px;
+    margin: 2rem auto;
     text-align: center;
-    border-top: 5px solid #0077b6; /* Borde azul distintivo */
 }
 
-.login-card .subtitle {
-    color: #555;
-    font-size: 1.1rem;
-    margin-bottom: 2rem;
+.main-card-logo {
+    height: 50px;
+    margin-bottom: 1rem;
+}
+
+.main-card h1 {
+    color: var(--secondary-color);
+    font-size: 2.8rem;
+    margin: 0;
+}
+
+.main-card-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin-top: 0.5rem;
+}
+
+/* =================================== */
+/*          FORMULARIO DE LOGIN        */
+/* =================================== */
+
+.login-form {
+    max-width: 500px;
+    margin: 2rem auto;
 }
 
 .stTextInput input {
     border-radius: 8px !important;
-    padding: 12px 15px !important;
-    border: 1px solid #ccc !important;
-    transition: border-color 0.3s, box-shadow 0.3s;
+    border: 2px solid transparent !important;
+    background-color: #e9ecef;
+    padding: 0.8rem 1rem !important;
+    font-size: 1.1rem !important;
+    transition: all 0.3s;
 }
 
 .stTextInput input:focus {
-    border-color: #0077b6 !important;
-    box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.2);
+    border-color: var(--secondary-color) !important;
+    background-color: var(--card-bg-color);
+    box-shadow: 0 0 0 4px rgba(0, 245, 212, 0.3) !important;
 }
 
-.stButton button, .stFormSubmitButton button {
-    width: 100%;
-    background-color: #0077b6; /* Azul principal */
-    color: white;
-    padding: 12px;
+.stFormSubmitButton button {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
     border-radius: 8px;
     border: none;
-    font-weight: bold;
-    font-size: 1.1rem;
-    transition: background-color 0.3s;
+    padding: 0.8rem 2rem;
+    font-weight: 700;
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    width: 100%;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
 }
 
-.stButton button:hover, .stFormSubmitButton button:hover {
-    background-color: #023e8a; /* Azul más oscuro al pasar el ratón */
-    color: white;
+.stFormSubmitButton button:hover {
+    background-color: #00c4a3;
+    transform: translateY(-2px);
+}
+
+.stFormSubmitButton button:active {
+    transform: translateY(0);
 }
 
 /* =================================== */
-/*        COMPONENTES PRINCIPALES      */
+/*      TARJETAS DE CONTENIDO          */
 /* =================================== */
 
-/* Tarjetas de perfil, ofertas, etc. */
-.profile-card, .offer-card, .about-card {
-    background-color: #ffffff;
+.content-card {
+    background-color: var(--card-bg-color);
+    border-radius: var(--border-radius);
     padding: 2rem;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-    margin-bottom: 1.5rem;
+    margin: 2rem auto;
+    max-width: 800px;
+    box-shadow: var(--box-shadow);
+    border-left: 5px solid var(--secondary-color);
 }
 
-/* Cabecera de la tarjeta de perfil */
-.profile-header {
+.content-card h2 {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
     display: flex;
     align-items: center;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 1rem;
 }
 
-.profile-icon {
-    width: 50px;
-    height: 50px;
-    margin-right: 1.5rem;
+.content-card h2 img {
+    margin-right: 1rem;
+    height: 32px;
 }
 
-/* Etiquetas de habilidades */
-.skill-tag, .skill-tag-small {
-    display: inline-block;
-    padding: 0.4rem 0.9rem;
+.content-card-dark {
+    background-color: #ffffff;
+    color: var(--text-color-light);
+}
+
+.content-card-dark h2, .content-card-dark h3, .content-card-dark h4 {
+    color: var(--secondary-color);
+}
+
+.content-card-dark b {
+    color: var(--secondary-color);
+}
+
+/* =================================== */
+/*       ETIQUETAS (TAGS)              */
+/* =================================== */
+
+.skills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.skill-tag {
+    padding: 0.4rem 1rem;
     border-radius: 15px;
-    margin: 0.2rem;
     font-weight: 500;
-    font-size: 0.9rem;
-    line-height: 1.2;
+    font-size: 0.95rem;
+    transition: all 0.2s;
 }
 
 .hard-skill {
-    background-color: #e0f7fa; /* Cian claro */
-    color: #0077b6; /* Azul */
+    background-color: #eeeeee;
+    color: var(--primary-color);
 }
 
 .soft-skill {
-    background-color: #fff0f5; /* Rosa claro */
-    color: #c1121f; /* Rojo oscuro */
-}
-
-/* Habilidades pequeñas para listas */
-.skill-tag-small {
-    padding: 0.2rem 0.6rem;
-    font-size: 0.8rem;
     background-color: #e9ecef;
-    color: #495057;
+    color: var(--text-color-dark);
 }
 
-.skill-tag-small.missing {
-    background-color: #ffebee;
-    color: #b71c1c;
+.missing-skill {
+    background-color: #ffdde1;
+    color: #000000;
     text-decoration: line-through;
 }
 
-/* Tarjeta de oferta de trabajo */
-.offer-card h4 {
-    color: #0077b6;
+/* =================================== */
+/*        SECCIONES ESPECÍFICAS        */
+/* =================================== */
+
+.profile-info {
+    line-height: 1.8;
 }
 
-.offer-card h5 {
-    color: #555;
+.profile-info b {
+    color: var(--primary-color);
+}
+
+.cv-summary {
+    background-color: #f1f3f5;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+/* Matching y Cursos */
+.matching-section textarea {
+    min-height: 150px;
+    border-radius: 8px;
+    border: 2px solid #ced4da;
+}
+
+.recommendation-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
     margin-bottom: 1rem;
 }
 
-/* Estilo específico para la tarjeta "Quiénes Somos" */
-.about-card, .about-card p {
-    color: #000; /* Color de texto negro */
+.recommendation-card h3 {
+    margin-top: 0;
+    color: var(--primary-color);
 }
 
-/* Estilo para los expanders de Streamlit */
-.st-emotion-cache-p5msec {
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
+.recommendation-card .match-score {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-color);
 }

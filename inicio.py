@@ -4,6 +4,13 @@ from datetime import date
 from typing import List, Optional, Tuple
 from textwrap import dedent
 import streamlit as st # type: ignore
+import pandas as pd # Moved from inside Streamlit block
+import json
+import re
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 # ===============================
@@ -149,6 +156,49 @@ class PerfilCandidato:
 
 
 # ===============================
+# 🌐 CONFIGURACIÓN FLASK Y DATOS GLOBALES
+# ===============================
+app = Flask(__name__)
+CORS(app)
+
+VACANTES: List[dict] = []
+CURSOS: List[dict] = []
+
+def _load_global_data():
+    """
+    Carga y prepara los datos de vacantes y cursos a nivel global
+    para ser usados tanto por la aplicación Streamlit como por la API Flask.
+    """
+    from db_utils import cargar_tabla
+
+    global VACANTES, CURSOS
+
+    df_vacantes = cargar_tabla('ofertas')
+    df_cursos = pd.DataFrame([
+        {"habilidad": "Python", "titulo_curso": "Curso intensivo de Python para Data Science", "proveedor": "Coursera"},
+        {"habilidad": "SQL", "titulo_curso": "Introducción a Bases de Datos Relacionales (SQL)", "proveedor": "edX"},
+        {"habilidad": "Trabajo en equipo", "titulo_curso": "Taller de Liderazgo y Colaboración Efectiva", "proveedor": "LinkedIn Learning"},
+        {"habilidad": "Creatividad", "titulo_curso": "Desarrollo del Pensamiento Creativo Aplicado", "proveedor": "Platzi"}
+    ])
+
+    # Convertir DataFrame de vacantes a lista de dicts con claves esperadas
+    VACANTES = []
+    for _, row in df_vacantes.iterrows():
+        VACANTES.append({
+            "id": row["ID_Oferta"],
+            "titulo": row["Puesto"],
+            "empresa": row["Empresa"],
+            "descripcion": row["Descripcion_Puesto"],
+            "requisitos_tecnicos": [h.strip() for h in str(row["Req_Hard_Skills"]).split(",") if h.strip()],
+            "requisitos_blandos": [h.strip() for h in str(row["Req_Soft_Skills"]).split(",") if h.strip()]
+        })
+    CURSOS = df_cursos.to_dict(orient="records")
+
+# Cargar los datos globales al inicio del script
+_load_global_data()
+
+
+# ===============================
 # 📊 FUNCIONES DE ANÁLISIS
 # ===============================
 
@@ -162,6 +212,111 @@ def verificar_compatibilidad(perfil: PerfilCandidato, oferta: OfertaDeTrabajo) -
 
     score = (len(coincidentes) / len(habilidades_oferta) * 100) if habilidades_oferta else 100
     return int(score), coincidentes, faltantes
+
+
+# ===============================
+# 🧠 FUNCIONES NLP
+# ===============================
+
+def normalizar_habilidad(habilidad):
+    """Limpia la habilidad y maneja sinónimos básicos y versiones."""
+    habilidad = habilidad.lower().strip()
+    if 'estadistica' in habilidad:
+        return 'estadística'
+    if 'trabajo en equipo' in habilidad or 'equipo' in habilidad:
+        return 'trabajo en equipo'
+    if 'resolución' in habilidad and 'problemas' in habilidad:
+        return 'resolución de problemas'
+    terminos_clave = ['python', 'sql', 'excel', 'javascript', 'node.js', 'google ads', 'seo', 'docker', 'liderazgo']
+    for termino in terminos_clave:
+        if termino in habilidad:
+            return termino
+    return habilidad
+
+def extraer_habilidades(cv_texto, lista_habilidades_conocidas):
+    """Procesa el texto del CV y busca coincidencias con las habilidades conocidas."""
+    habilidades_encontradas = set()
+    habilidades_normalizadas = [normalizar_habilidad(h) for h in lista_habilidades_conocidas]
+    cv_texto_limpio = normalizar_habilidad(cv_texto)
+    for habilidad in habilidades_normalizadas:
+        if habilidad in cv_texto_limpio:
+            habilidades_encontradas.add(habilidad)
+    return habilidades_encontradas
+
+def calcular_similitud_tfidf(cv_texto, vacantes):
+    """Calcula la similitud coseno entre el texto del CV y la descripción de cada vacante."""
+    documentos = [cv_texto] + [v['descripcion'] for v in vacantes]
+    vectorizer = TfidfVectorizer(stop_words='english', lowercase=True)
+    tfidf_matrix = vectorizer.fit_transform(documentos)
+    cosine_sim = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1:])
+    scores = cosine_sim[0]
+    tfidf_scores = {}
+    for i, score in enumerate(scores):
+        vacante_id = vacantes[i]['id']
+        tfidf_scores[vacante_id] = score
+    return tfidf_scores
+
+
+# ===============================
+# 🚀 ENDPOINTS DE LA API FLASK
+# ===============================
+
+@app.route('/aplicar', methods=['POST'])
+def aplicar_vacante():
+    """Recibe el texto del CV, hace el match con dos modelos y devuelve recomendaciones."""
+    data = request.json
+    cv_texto = data.get('cv_texto', '')
+
+    if not cv_texto:
+        return jsonify({"error": "No se proporcionó texto de CV"}), 400
+
+    resultados = []
+    todas_habilidades = set()
+    for v in VACANTES:
+        todas_habilidades.update(v['requisitos_tecnicos'])
+        todas_habilidades.update(v['requisitos_blandos'])
+
+    habilidades_cv = extraer_habilidades(cv_texto, todas_habilidades)
+    tfidf_scores = calcular_similitud_tfidf(cv_texto, VACANTES)
+
+    for vacante in VACANTES:
+        req_tec = set(normalizar_habilidad(h) for h in vacante['requisitos_tecnicos'])
+        req_blando = set(normalizar_habilidad(h) for h in vacante['requisitos_blandos'])
+        req_totales = req_tec.union(req_blando)
+
+        habilidades_cumplidas = habilidades_cv.intersection(req_totales)
+        habilidades_faltantes = req_totales - habilidades_cv
+
+        total_req = len(req_totales)
+        score_cumplimiento = len(habilidades_cumplidas) / total_req if total_req else 0
+
+        score_relevancia = tfidf_scores.get(vacante['id'], 0)
+        puntaje_final = (score_cumplimiento * 0.6) + (score_relevancia * 0.4) # ponderación de 60/40
+
+        cursos_recomendados = [
+            curso for curso in CURSOS
+            if normalizar_habilidad(curso['habilidad']) in habilidades_faltantes
+        ]
+
+        resultados.append({
+            "vacante_id": vacante['id'],
+            "titulo": vacante['titulo'],
+            "empresa": vacante['empresa'],
+            "puntaje_match": round(puntaje_final * 100, 2),
+            "habilidades_cumplidas": list(habilidades_cumplidas),
+            "habilidades_faltantes": list(habilidades_faltantes),
+            "cursos_recomendados": cursos_recomendados
+        })
+
+    resultados_ordenados = sorted(resultados, key=lambda x: x['puntaje_match'], reverse=True)
+
+    return jsonify(resultados_ordenados)
+
+# if __name__ == '__main__':
+#     # Este bloque es para ejecutar la API Flask de forma independiente.
+#     # Si estás usando Streamlit, no debes descomentar esta línea.
+#     # Ejecutar la API Flask: python inicio.py
+#     app.run(host='0.0.0.0', port=5000, debug=True)
 
 
 # ===============================
@@ -272,67 +427,7 @@ if __name__ == "__main__":
             # --- Matching Inteligente de Vacantes y Cursos ---
             st.markdown("<hr><h4 style='color:#00e6e6;'>Matching Inteligente de Vacantes y Cursos</h4>", unsafe_allow_html=True)
             st.info("Pega el texto de tu CV para recibir recomendaciones personalizadas de vacantes y cursos.")
-            import re
-            from sklearn.feature_extraction.text import TfidfVectorizer
-            from sklearn.metrics.pairwise import cosine_similarity
-            # Cargar datos desde la base de datos
-            from db_utils import cargar_tabla
-            df_vacantes = cargar_tabla('ofertas')
-            df_cursos = pd.DataFrame([
-                {"habilidad": "Python", "titulo_curso": "Curso intensivo de Python para Data Science", "proveedor": "Coursera"},
-                {"habilidad": "SQL", "titulo_curso": "Introducción a Bases de Datos Relacionales (SQL)", "proveedor": "edX"},
-                {"habilidad": "Trabajo en equipo", "titulo_curso": "Taller de Liderazgo y Colaboración Efectiva", "proveedor": "LinkedIn Learning"},
-                {"habilidad": "Creatividad", "titulo_curso": "Desarrollo del Pensamiento Creativo Aplicado", "proveedor": "Platzi"}
-            ])
-
-            # Convertir DataFrame de vacantes a lista de dicts con claves esperadas
-            VACANTES = []
-            for _, row in df_vacantes.iterrows():
-                VACANTES.append({
-                    "id": row["ID_Oferta"],
-                    "titulo": row["Puesto"],
-                    "empresa": row["Empresa"],
-                    "descripcion": row["Descripcion_Puesto"],
-                    "requisitos_tecnicos": [h.strip() for h in row["Req_Hard_Skills"].split(",")],
-                    "requisitos_blandos": [h.strip() for h in row["Req_Soft_Skills"].split(",")]
-                })
-            CURSOS = df_cursos.to_dict(orient="records")
-
-            def normalizar_habilidad(habilidad):
-                habilidad = habilidad.lower().strip()
-                if 'estadistica' in habilidad:
-                    return 'estadística'
-                if 'trabajo en equipo' in habilidad or 'equipo' in habilidad:
-                    return 'trabajo en equipo'
-                if 'resolución' in habilidad and 'problemas' in habilidad:
-                    return 'resolución de problemas'
-                terminos_clave = ['python', 'sql', 'excel', 'javascript', 'node.js', 'google ads', 'seo', 'docker', 'liderazgo']
-                for termino in terminos_clave:
-                    if termino in habilidad:
-                        return termino
-                return habilidad
-
-            def extraer_habilidades(cv_texto, lista_habilidades_conocidas):
-                habilidades_encontradas = set()
-                habilidades_normalizadas = [normalizar_habilidad(h) for h in lista_habilidades_conocidas]
-                cv_texto_limpio = normalizar_habilidad(cv_texto)
-                for habilidad in habilidades_normalizadas:
-                    if habilidad in cv_texto_limpio:
-                        habilidades_encontradas.add(habilidad)
-                return habilidades_encontradas
-
-            def calcular_similitud_tfidf(cv_texto, vacantes):
-                documentos = [cv_texto] + [v['descripcion'] for v in vacantes]
-                vectorizer = TfidfVectorizer(stop_words='english', lowercase=True)
-                tfidf_matrix = vectorizer.fit_transform(documentos)
-                cosine_sim = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1:])
-                scores = cosine_sim[0]
-                tfidf_scores = {}
-                for i, score in enumerate(scores):
-                    vacante_id = vacantes[i]['id']
-                    tfidf_scores[vacante_id] = score
-                return tfidf_scores
-
+            
             cv_texto = st.text_area("Pega aquí el texto de tu CV para analizar tu perfil y recomendarte vacantes y cursos:")
 
             if st.button("Analizar y Recomendar"):
@@ -373,7 +468,7 @@ if __name__ == "__main__":
                         st.markdown(f"### {v['titulo']} ({v['empresa']})")
                         st.markdown(f"**Puntaje de match:** {res['puntaje_match']}%")
                         st.markdown(f"**Habilidades cumplidas:** {', '.join(res['habilidades_cumplidas'])}")
-                        st.markdown(f"**Habilidades faltantes:** {', '.join(res['habilidades_faltantes'])}")
+                        st.markdown(f"**Habilidades faltantes:** {', '. join(res['habilidades_faltantes'])}")
                         st.markdown("**Cursos recomendados:**")
                         for curso in res["cursos_recomendados"]:
                             st.markdown(f"- {curso['titulo_curso']} ({curso['proveedor']}) [{curso['habilidad']}]")
@@ -473,49 +568,3 @@ if __name__ == "__main__":
     }
     </style>
     """, unsafe_allow_html=True)
-
-    # Quiénes Somos en la parte superior
-    st.markdown("<h2 id='quienes-somos' style='color:#0a1f2e; margin-top:2rem;'>Quiénes Somos</h2>", unsafe_allow_html=True)
-    st.markdown("""
-    <div style='background:#e6f7ff; border-radius:12px; padding:1.5rem; color:#0a1f2e; font-size:1.1rem;'>
-    La Universidad Nacional Rosario Castellanos (UNRC), como institución innovadora y 
-    orientada al futuro, rápidamente se posicionó como un centro vital para la formación 
-    de profesionales especializados, en particular en áreas como la Ciencia de Datos para 
-    Negocios. Sin embargo, con un rápido crecimiento y un enfoque vanguardista, surgió 
-    un desafío: la necesidad de un sistema de vinculación laboral que estuviera a la altura 
-    de su modelo educativo. <br><br>
-    Los métodos tradicionales de networking y ferias de empleo eran insuficientes para un 
-    cuerpo estudiantil y de egresados que domina la analítica avanzada. Se requería una 
-    solución que hablara el mismo idioma: el lenguaje de los datos. El proceso de 
-    matching entre el talento especializado de la UNRC y las vacantes complejas del 
-    sector productivo era lento, manual y carecía de la precisión que solo la IA puede 
-    ofrecer.<br><br>
-    <b>El Nacimiento de la Solución Inteligente</b><br>
-    En 2024, en el octavo semestre de la carrera de Ciencia de Datos para Negocios, 
-    Daniela Espinosa y Sofía Casas vieron la oportunidad de aplicar sus conocimientos 
-    para transformar esta deficiencia en una ventaja competitiva para su universidad y sus 
-    compañeros.<br>
-    "Nuestro valor como científicos de datos es optimizar la toma de decisiones. ¿Por qué 
-    no optimizar la decisión de contratación, usando la inteligencia que ya nos brindan los 
-    datos?" — fue la premisa central de su proyecto.<br>
-    Utilizando sus habilidades en modelado predictivo, Cómputo Cognitivo y la 
-    infraestructura digital de la UNRC, Daniela y Sofía diseñaron la arquitectura de 
-    CogniLink. Su objetivo era ir más allá del currículum: la API analizaría el desempeño 
-    académico, las competencias blandas y las trayectorias de los egresados para 
-    generar un matching basado en la probabilidad de éxito laboral.<br><br>
-    <b>¿Qué es CogniLink?</b><br>
-    CogniLink nace de la poderosa fusión de la Inteligencia Artificial con la Vinculación 
-    Efectiva:<br>
-    1. Cognitivo (Cogni): Representa el motor de Inteligencia Artificial que analiza, 
-    aprende y realiza un matching predictivo profundo.<br>
-    2. Link: Simboliza la Conexión Directa y Automatizada entre el talento de la UNRC y las 
-    oportunidades de los sectores público y privado.<br>
-    CogniLink se convierte en la herramienta oficial de la UNRC para asegurar que el 
-    talento formado bajo sus innovadores modelos educativos se posicione 
-    estratégicamente en el mercado. Es la conexión inteligente que garantiza una 
-    rentabilidad continua (medida en empleabilidad y posicionamiento) para la 
-    universidad, el egresado y las empresas que requieren análisis de datos de alto nivel.
-    </div>
-    """, unsafe_allow_html=True)
-
-

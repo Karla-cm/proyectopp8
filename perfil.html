@@ -17,9 +17,10 @@
         <nav class="nav">
             <button class="btn btn-outline">Ingresar</button>
             <button class="btn btn-primary">Suscribirse</button>
-            <button class="btn btn-ghost">Quiénes Somos</button>
         </nav>
     </header>
+
+
 
     <!-- Tarjeta principal del perfil -->
     <main class="card">
@@ -68,6 +69,29 @@
                 </p>
             </article>
         </section>
+
+        <section class="seccion">
+            <button id="toggle-quienes-somos" class="btn btn-primary">Quiénes Somos</button>
+            <div id="quienes-somos-content" style="display:none; background:#e6f7ff; border-radius:12px; padding:1.5rem; color:#0a1f2e; font-size:1.1rem; margin-top:1rem;">
+                <b>La Historia de Origen de CogniLink: Conectando Talento con Inteligencia (UNRC - Rosario Castellanos)</b><br><br>
+                💡 <b>El Desafío del Crecimiento</b><br>
+                La Universidad Nacional Rosario Castellanos (UNRC), como institución innovadora y orientada al futuro, rápidamente se posicionó como un centro vital para la formación de profesionales especializados, en particular en áreas como la Ciencia de Datos para Negocios. Sin embargo, con un rápido crecimiento y un enfoque vanguardista, surgió un desafío: la necesidad de un sistema de vinculación laboral que estuviera a la altura de su modelo educativo.<br>
+                Los métodos tradicionales de networking y ferias de empleo eran insuficientes para un cuerpo estudiantil y de egresados que domina la analítica avanzada. Se requería una solución que hablara el mismo idioma: el lenguaje de los datos. El proceso de matching entre el talento especializado de la UNRC y las vacantes complejas del sector productivo era lento, manual y carecía de la precisión que solo la IA puede ofrecer.<br><br>
+                💻 <b>El Nacimiento de la Solución Inteligente</b><br>
+                En 2024, en el octavo semestre de la carrera de Ciencia de Datos para Negocios, Daniela Espinosa y Sofía Casas vieron la oportunidad de aplicar sus conocimientos para transformar esta deficiencia en una ventaja competitiva para su universidad y sus compañeros.
+            </div>
+        </section>
     </main>
+
+    <script>
+        document.getElementById('toggle-quienes-somos').addEventListener('click', function() {
+            var content = document.getElementById('quienes-somos-content');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
