@@ -3,15 +3,14 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import List, Optional, Tuple
 from textwrap import dedent
-import streamlit as st # type: ignore
-import pandas as pd # Moved from inside Streamlit block
+import streamlit as st
+import pandas as pd
 import json
 import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
 
 # ===============================
 # 📌 MODELOS DE DATOS
@@ -169,30 +168,34 @@ def _load_global_data():
     Carga y prepara los datos de vacantes y cursos a nivel global
     para ser usados tanto por la aplicación Streamlit como por la API Flask.
     """
-    from db_utils import cargar_tabla
-
     global VACANTES, CURSOS
 
-    df_vacantes = cargar_tabla('ofertas')
-    df_cursos = pd.DataFrame([
-        {"habilidad": "Python", "titulo_curso": "Curso intensivo de Python para Data Science", "proveedor": "Coursera"},
-        {"habilidad": "SQL", "titulo_curso": "Introducción a Bases de Datos Relacionales (SQL)", "proveedor": "edX"},
-        {"habilidad": "Trabajo en equipo", "titulo_curso": "Taller de Liderazgo y Colaboración Efectiva", "proveedor": "LinkedIn Learning"},
-        {"habilidad": "Creatividad", "titulo_curso": "Desarrollo del Pensamiento Creativo Aplicado", "proveedor": "Platzi"}
-    ])
-
-    # Convertir DataFrame de vacantes a lista de dicts con claves esperadas
-    VACANTES = []
-    for _, row in df_vacantes.iterrows():
-        VACANTES.append({
-            "id": row["ID_Oferta"],
-            "titulo": row["Puesto"],
-            "empresa": row["Empresa"],
-            "descripcion": row["Descripcion_Puesto"],
-            "requisitos_tecnicos": [h.strip() for h in str(row["Req_Hard_Skills"]).split(",") if h.strip()],
-            "requisitos_blandos": [h.strip() for h in str(row["Req_Soft_Skills"]).split(",") if h.strip()]
-        })
-    CURSOS = df_cursos.to_dict(orient="records")
+    try:
+        # Intentar cargar desde archivos JSON
+        with open('vacantes.json', 'r', encoding='utf-8') as f:
+            VACANTES = json.load(f)
+        
+        with open('cursos.json', 'r', encoding='utf-8') as f:
+            CURSOS = json.load(f)
+    except FileNotFoundError:
+        # Fallback a datos de ejemplo si no hay archivos
+        VACANTES = [
+            {
+                "id": 1,
+                "titulo": "Desarrollador Python",
+                "empresa": "Tech Solutions",
+                "descripcion": "Desarrollo de aplicaciones web con Python y Django",
+                "requisitos_tecnicos": ["Python", "Django", "SQL"],
+                "requisitos_blandos": ["Trabajo en equipo", "Comunicación"]
+            }
+        ]
+        
+        CURSOS = [
+            {"habilidad": "Python", "titulo_curso": "Curso intensivo de Python para Data Science", "proveedor": "Coursera"},
+            {"habilidad": "SQL", "titulo_curso": "Introducción a Bases de Datos Relacionales (SQL)", "proveedor": "edX"},
+            {"habilidad": "Trabajo en equipo", "titulo_curso": "Taller de Liderazgo y Colaboración Efectiva", "proveedor": "LinkedIn Learning"},
+            {"habilidad": "Creatividad", "titulo_curso": "Desarrollo del Pensamiento Creativo Aplicado", "proveedor": "Platzi"}
+        ]
 
 # Cargar los datos globales al inicio del script
 _load_global_data()
@@ -312,25 +315,28 @@ def aplicar_vacante():
 
     return jsonify(resultados_ordenados)
 
-# if __name__ == '__main__':
-#     # Este bloque es para ejecutar la API Flask de forma independiente.
-#     # Si estás usando Streamlit, no debes descomentar esta línea.
-#     # Ejecutar la API Flask: python inicio.py
-#     app.run(host='0.0.0.0', port=5000, debug=True)
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Endpoint para verificar que la API está funcionando."""
+    return jsonify({
+        "status": "ok", 
+        "message": "API CogniLink funcionando correctamente",
+        "vacantes_cargadas": len(VACANTES),
+        "cursos_cargados": len(CURSOS)
+    })
 
 
 # ===============================
-# 🧠 EJEMPLO STREAMLIT
+# 🎯 APLICACIÓN STREAMLIT
 # ===============================
 
-if __name__ == "__main__":
-    from db_utils import cargar_tabla
-    df_egresados = cargar_tabla('egresados')
-    df_ofertas = cargar_tabla('ofertas')
-    df_habilidades = cargar_tabla('habilidades')
-
+def run_streamlit_app():
+    """Ejecuta la aplicación Streamlit principal."""
+    
+    # Configuración de página
     st.set_page_config(page_title="CogniLink UNRC", layout="wide")
 
+    # Estilos CSS personalizados
     st.markdown("""
     <style>
     body { background-color: #f5faff; }
@@ -361,7 +367,7 @@ if __name__ == "__main__":
         font-size: 1.1rem;
         margin-bottom: 1rem;
     }
-    .stFormSubmitButton>button {
+    .stButton>button {
         background: #00e6e6;
         color: #0a1f2e;
         border-radius: 8px;
@@ -373,13 +379,27 @@ if __name__ == "__main__":
         box-shadow: 0 2px 8px #00e6e633;
         transition: background 0.2s, color 0.2s;
     }
-    .stFormSubmitButton>button:hover {
+    .stButton>button:hover {
         background: #0a1f2e;
         color: #00e6e6;
     }
+    .result-card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px #0a1f2e22;
+        padding: 2rem;
+        margin-top: 2rem;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .skill-match { background: #00e6e6; color: #0a1f2e; border-radius: 6px; padding: 0.3rem 0.8rem; margin: 0.2rem; display: inline-block; font-weight: 500; }
+    .skill-missing { background: #ffe6e6; color: #cc0000; border-radius: 6px; padding: 0.3rem 0.8rem; margin: 0.2rem; display: inline-block; font-weight: 500; }
+    .course-card { background: #e6f7ff; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; border-left: 6px solid #00e6e6; }
     </style>
     """, unsafe_allow_html=True)
 
+    # Header principal
     st.markdown("""
     <div class='main-card'>
         <img src='https://files.oaiusercontent.com/file-7b2b6e2e-7e2e-4e2e-8e2e-7e2e7e2e7e2e/imagen.png'>
@@ -388,19 +408,49 @@ if __name__ == "__main__":
     </div>
     """, unsafe_allow_html=True)
 
+    # Formulario de login
     with st.form("login_form"):
         id_input = st.text_input("ID de egresado", max_chars=10)
         password_input = st.text_input("Ingresa tu contraseña", type="password")
         login_btn = st.form_submit_button("Ingresar")
 
+    # Cargar datos de ejemplo (en un caso real, esto vendría de una base de datos)
+    try:
+        from db_utils import cargar_tabla
+        df_egresados = cargar_tabla('egresados')
+        df_ofertas = cargar_tabla('ofertas')
+        df_habilidades = cargar_tabla('habilidades')
+    except ImportError:
+        # Datos de ejemplo si no hay db_utils
+        df_egresados = pd.DataFrame([{
+            'ID_Egresado': '123',
+            'Nombre': 'Juan Pérez',
+            'Anio_Egreso': 2020,
+            'Rol_Deseado': 'Desarrollador Python',
+            'Experiencia_Anios': 3,
+            'Hard_Skills': 'Python, SQL, Django',
+            'Soft_Skills': 'Trabajo en equipo, Comunicación',
+            'Resumen_CV': 'Desarrollador con experiencia en aplicaciones web'
+        }])
+        df_ofertas = pd.DataFrame([{
+            'Puesto': 'Desarrollador Python',
+            'Empresa': 'Tech Solutions',
+            'Min_Exp_Anios': 2,
+            'Req_Hard_Skills': 'Python, Django, SQL',
+            'Req_Soft_Skills': 'Trabajo en equipo',
+            'Descripcion_Puesto': 'Desarrollo de aplicaciones web con Python'
+        }])
+
     if login_btn:
-        import pandas as pd
+        # Validar credenciales
         egresado = df_egresados[df_egresados['ID_Egresado'].astype(str) == id_input]
-        # Usar contraseña como nombre para validación (puedes cambiar la lógica si tienes campo de contraseña real)
+        
         if not egresado.empty and egresado.iloc[0]['Nombre'].strip().lower() == password_input.strip().lower():
             st.success(f"Bienvenido/a, {egresado.iloc[0]['Nombre']}!")
-            st.markdown("""
-            <div style='background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #0a1f2e22; padding: 2rem; margin-top: 2rem; max-width: 700px; margin-left:auto; margin-right:auto;'>
+            
+            # Mostrar perfil del egresado
+            st.markdown(f"""
+            <div class='result-card'>
                 <div style='display: flex; align-items: center;'>
                     <img src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png' width='48' style='margin-right: 16px;'>
                     <h3 style='color:#00e6e6; margin-bottom:0;'>Perfil del Egresado</h3>
@@ -414,13 +464,15 @@ if __name__ == "__main__":
             </div>
             """, unsafe_allow_html=True)
 
-            st.markdown("<b>Hard Skills:</b>", unsafe_allow_html=True)
+            # Mostrar habilidades
             hard_skills = [h.strip() for h in egresado.iloc[0]['Hard_Skills'].split(',')]
-            st.markdown(' '.join([f"<span style='background:#00e6e6; color:#0a1f2e; border-radius:6px; padding:0.3rem 0.8rem; margin:0.2rem; display:inline-block; font-weight:500;'>{skill}</span>" for skill in hard_skills]), unsafe_allow_html=True)
+            soft_skills = [s.strip() for s in egresado.iloc[0]['Soft_Skills'].split(',')]
+            
+            st.markdown("<b>Hard Skills:</b>", unsafe_allow_html=True)
+            st.markdown(' '.join([f"<span class='skill-match'>{skill}</span>" for skill in hard_skills]), unsafe_allow_html=True)
 
             st.markdown("<b>Soft Skills:</b>", unsafe_allow_html=True)
-            soft_skills = [s.strip() for s in egresado.iloc[0]['Soft_Skills'].split(',')]
-            st.markdown(' '.join([f"<span style='background:#e6f7ff; color:#0a1f2e; border-radius:6px; padding:0.3rem 0.8rem; margin:0.2rem; display:inline-block; font-weight:500;'>{skill}</span>" for skill in soft_skills]), unsafe_allow_html=True)
+            st.markdown(' '.join([f"<span class='skill-match'>{skill}</span>" for skill in soft_skills]), unsafe_allow_html=True)
 
             st.markdown(f"<b>Resumen CV:</b> {egresado.iloc[0]['Resumen_CV']}", unsafe_allow_html=True)
 
@@ -434,27 +486,34 @@ if __name__ == "__main__":
                 if not cv_texto.strip():
                     st.error("Debes ingresar el texto de tu CV.")
                 else:
+                    # Simular llamada a la API Flask
                     resultados = []
                     todas_habilidades = set()
                     for v in VACANTES:
                         todas_habilidades.update(v['requisitos_tecnicos'])
                         todas_habilidades.update(v['requisitos_blandos'])
+                    
                     habilidades_cv = extraer_habilidades(cv_texto, todas_habilidades)
                     tfidf_scores = calcular_similitud_tfidf(cv_texto, VACANTES)
+                    
                     for vacante in VACANTES:
                         req_tec = set(normalizar_habilidad(h) for h in vacante['requisitos_tecnicos'])
                         req_blando = set(normalizar_habilidad(h) for h in vacante['requisitos_blandos'])
                         req_totales = req_tec.union(req_blando)
+                        
                         habilidades_cumplidas = habilidades_cv.intersection(req_totales)
                         habilidades_faltantes = req_totales - habilidades_cv
+                        
                         total_req = len(req_totales)
                         score_cumplimiento = len(habilidades_cumplidas) / total_req if total_req else 0
                         score_relevancia = tfidf_scores.get(vacante['id'], 0)
                         puntaje_final = (score_cumplimiento * 0.6) + (score_relevancia * 0.4)
+                        
                         cursos_recomendados = [
                             curso for curso in CURSOS
                             if normalizar_habilidad(curso['habilidad']) in habilidades_faltantes
                         ]
+                        
                         resultados.append({
                             "vacante": vacante,
                             "puntaje_match": round(puntaje_final * 100, 2),
@@ -462,109 +521,47 @@ if __name__ == "__main__":
                             "habilidades_faltantes": list(habilidades_faltantes),
                             "cursos_recomendados": cursos_recomendados
                         })
+                    
                     resultados_ordenados = sorted(resultados, key=lambda x: x['puntaje_match'], reverse=True)
+                    
+                    # Mostrar resultados
                     for res in resultados_ordenados:
                         v = res["vacante"]
-                        st.markdown(f"### {v['titulo']} ({v['empresa']})")
-                        st.markdown(f"**Puntaje de match:** {res['puntaje_match']}%")
-                        st.markdown(f"**Habilidades cumplidas:** {', '.join(res['habilidades_cumplidas'])}")
-                        st.markdown(f"**Habilidades faltantes:** {', '. join(res['habilidades_faltantes'])}")
-                        st.markdown("**Cursos recomendados:**")
+                        st.markdown(f"""
+                        <div class='result-card'>
+                            <h3>{v['titulo']} ({v['empresa']})</h3>
+                            <p><b>Puntaje de match:</b> {res['puntaje_match']}%</p>
+                            <p><b>Habilidades cumplidas:</b> {', '.join(res['habilidades_cumplidas'])}</p>
+                            <p><b>Habilidades faltantes:</b> {', '.join(res['habilidades_faltantes'])}</p>
+                            <p><b>Cursos recomendados:</b></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
                         for curso in res["cursos_recomendados"]:
-                            st.markdown(f"- {curso['titulo_curso']} ({curso['proveedor']}) [{curso['habilidad']}]")
+                            st.markdown(f"""
+                            <div class='course-card'>
+                                <b>{curso['titulo_curso']}</b> ({curso['proveedor']})<br>
+                                <i>Habilidad objetivo: {curso['habilidad']}</i>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
                         st.markdown("---")
 
-            # Cursos recomendados según habilidades
-            cursos = [
-                {"habilidad": "Python", "titulo_curso": "Curso intensivo de Python para Data Science", "proveedor": "Coursera"},
-                {"habilidad": "SQL", "titulo_curso": "Introducción a Bases de Datos Relacionales (SQL)", "proveedor": "edX"},
-                {"habilidad": "Trabajo en equipo", "titulo_curso": "Taller de Liderazgo y Colaboración Efectiva", "proveedor": "LinkedIn Learning"},
-                {"habilidad": "Creatividad", "titulo_curso": "Desarrollo del Pensamiento Creativo Aplicado", "proveedor": "Platzi"}
-            ]
-            habilidades_usuario = hard_skills + soft_skills
-            cursos_rel = [c for c in cursos if c["habilidad"].lower() in [h.lower() for h in habilidades_usuario]]
-            st.markdown("<hr><h4 style='color:#00e6e6;'>Cursos Recomendados</h4>", unsafe_allow_html=True)
-            if cursos_rel:
-                for curso in cursos_rel:
-                    st.markdown(f"""
-                    <div style='background:#fffbe6; border-radius:12px; padding:1rem; margin-bottom:1rem; max-width:600px; margin-left:auto; margin-right:auto; border-left: 6px solid #00e6e6;'>
-                        <b>Habilidad:</b> {curso['habilidad']}<br>
-                        <b>Curso:</b> {curso['titulo_curso']}<br>
-                        <b>Proveedor:</b> {curso['proveedor']}<br>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No hay cursos recomendados para tus habilidades actuales.")
-
-            st.markdown("<hr><h4 style='color:#00e6e6;'>Ofertas Relacionadas</h4>", unsafe_allow_html=True)
-            ofertas_rel = df_ofertas[df_ofertas['Puesto'].str.contains(egresado.iloc[0]['Rol_Deseado'].split()[0], case=False) | df_ofertas['Req_Hard_Skills'].str.contains(hard_skills[0], case=False)]
-            if not ofertas_rel.empty:
-                for _, oferta in ofertas_rel.iterrows():
-                    st.markdown(f"""
-                    <div style='background:#e6f7ff; border-radius:12px; padding:1rem; margin-bottom:1rem; max-width:600px; margin-left:auto; margin-right:auto;'>
-                        <b>Puesto:</b> {oferta['Puesto']}<br>
-                        <b>Empresa:</b> {oferta['Empresa']}<br>
-                        <b>Min. Experiencia (años):</b> {oferta['Min_Exp_Anios']}<br>
-                        <b>Hard Skills requeridas:</b> {oferta['Req_Hard_Skills']}<br>
-                        <b>Soft Skills requeridas:</b> {oferta['Req_Soft_Skills']}<br>
-                        <b>Descripción:</b> {oferta['Descripcion_Puesto']}<br>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No hay ofertas relacionadas actualmente.")
         else:
             st.error("ID o nombre incorrecto. Por favor, verifica tus datos.")
 
-    # Configuración de Streamlit
-    st.set_page_config(page_title="CogniLink UNRC", layout="wide")
 
+# ===============================
+# 🚀 PUNTO DE ENTRADA PRINCIPAL
+# ===============================
 
-    # Colores y logo CogniLink UNRC
-    st.markdown("""
-    <style>
-    body { background-color: #f5faff; }
-    .topbar { background: linear-gradient(90deg, #0a1f2e 60%, #00e6e6 100%); color: #fff; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-    .logo { font-size: 2rem; font-weight: bold; color: #00e6e6; display: flex; align-items: center; }
-    .logo img { height: 48px; margin-right: 12px; vertical-align: middle; }
-    .nav button { margin-left: 1rem; background: #fff; color: #0a1f2e; border-radius: 8px; border: none; padding: 0.5rem 1.2rem; font-weight: 600; cursor: pointer; }
-    .nav .btn-primary { background: #00e6e6; color: #0a1f2e; }
-    .nav .btn-outline { border: 2px solid #00e6e6; background: #fff; color: #00e6e6; }
-    .nav .btn-ghost { background: transparent; color: #fff; }
-    .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #0a1f2e22; padding: 2rem; margin-top: 2rem; }
-    .header h1 { color: #0a1f2e; }
-    .habilidades-container span { background: #00e6e6; color: #0a1f2e; border-radius: 6px; padding: 0.3rem 0.8rem; margin: 0.2rem; display: inline-block; font-weight: 500; }
-    .plan-card { background: #e6f7ff; border-radius: 12px; padding: 1.2rem; box-shadow: 0 2px 8px #00e6e633; margin-bottom: 1rem; }
-    .plan-card h3 { color: #0a1f2e; }
-    .plan-card .price { color: #00e6e6; font-size: 1.5rem; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Barra superior
-    col_logo, col_title = st.columns([1, 5])
-    with col_logo:
-        st.image("https://files.oaiusercontent.com/file-7b2b6e2e-7e2e-4e2e-8e2e-7e2e7e2e7e2e/imagen.png", width=80)
-    with col_title:
-        st.markdown("<h1 style='color:#00e6e6; margin-bottom:0;'>CogniLink UNRC</h1>", unsafe_allow_html=True)
-
-
-    # Estilos para los botones Streamlit
-    st.markdown("""
-    <style>
-    .stButton > button {
-        background: #00e6e6;
-        color: #0a1f2e;
-        border: none;
-        border-radius: 8px;
-        padding: 0.6rem 1.5rem;
-        font-weight: 600;
-        font-size: 1rem;
-        margin: 0.5rem 0.5rem 0.5rem 0;
-        box-shadow: 0 2px 8px #00e6e633;
-        transition: background 0.2s, color 0.2s;
-    }
-    .stButton > button:hover {
-        background: #0a1f2e;
-        color: #00e6e6;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+if __name__ == "__main__":
+    import sys
+    
+    # Determinar si ejecutar Flask o Streamlit
+    if len(sys.argv) > 1 and sys.argv[1] == "api":
+        print("🚀 Iniciando API Flask en http://0.0.0.0:5000")
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    else:
+        print("🎯 Iniciando aplicación Streamlit")
+        run_streamlit_app()
